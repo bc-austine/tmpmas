@@ -1,0 +1,195 @@
+# =============================================================================
+# TMPMAS .gitignore
+# =============================================================================
+# Patterns below tell Git which files to ignore. See CONTRIBUTING.md for context.
+# Note: .gitignore only affects UNTRACKED files. If a file is already tracked,
+# adding it here will not untrack it — you must `git rm --cached <file>` first.
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+# Secrets and credentials — NEVER COMMIT
+# -----------------------------------------------------------------------------
+# Environment files (ADR-008: secrets via environment variables)
+.env
+.env.*
+!.env.example
+
+# Certificates, keys, credential files
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+credentials.json
+credentials.yaml
+secrets.yaml
+secrets.json
+
+# Cloud provider credentials (paranoid, but cheap)
+.aws/
+.gcp/
+.azure/
+
+
+# -----------------------------------------------------------------------------
+# Python artifacts
+# -----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+
+# -----------------------------------------------------------------------------
+# Virtual environments
+# -----------------------------------------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+
+# -----------------------------------------------------------------------------
+# Testing and coverage
+# -----------------------------------------------------------------------------
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.cover
+.hypothesis/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+
+# -----------------------------------------------------------------------------
+# IDE and editor
+# -----------------------------------------------------------------------------
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.spyderproject
+.spyproject
+
+
+# -----------------------------------------------------------------------------
+# Operating system
+# -----------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+
+# -----------------------------------------------------------------------------
+# Logs and temporary files
+# -----------------------------------------------------------------------------
+*.log
+logs/
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+
+
+# -----------------------------------------------------------------------------
+# Docker (developer-local overrides and runtime data)
+# -----------------------------------------------------------------------------
+docker-compose.override.yml
+docker-compose.*.override.yml
+.docker/
+
+
+# -----------------------------------------------------------------------------
+# Local observability data (Prometheus, Grafana, OpenTelemetry)
+# -----------------------------------------------------------------------------
+ops/prometheus/data/
+ops/grafana/data/
+ops/otel/data/
+*.tsdb
+
+
+# -----------------------------------------------------------------------------
+# Local database and dumps
+# -----------------------------------------------------------------------------
+*.sqlite
+*.sqlite3
+*.db
+local-db/
+*.dump
+
+
+# -----------------------------------------------------------------------------
+# Jupyter / exploratory
+# -----------------------------------------------------------------------------
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+
+# -----------------------------------------------------------------------------
+# Build and cache
+# -----------------------------------------------------------------------------
+.cache/
+.pytest_cache/
+.ruff_cache/
+node_modules/
+
+
+# -----------------------------------------------------------------------------
+# Temporary working files
+# -----------------------------------------------------------------------------
+*.swp
+*~
+*.bak
+*.tmp
+
+
+# -----------------------------------------------------------------------------
+# Project-specific
+# -----------------------------------------------------------------------------
+# Local test output
+/tmp/
+/test-output/
+
+# Personal scripts (should not be committed)
+personal/
+scratch/
+sandbox/
