@@ -1,0 +1,97 @@
+# =============================================================================
+# TMPMAS pre-commit configuration
+# =============================================================================
+# This file tells the `pre-commit` framework which checks to run before each
+# commit. To activate locally after cloning:
+#
+#     pip install pre-commit
+#     pre-commit install
+#
+# To run all hooks manually against every file:
+#
+#     pre-commit run --all-files
+#
+# To update all hook versions to their latest releases:
+#
+#     pre-commit autoupdate
+# =============================================================================
+
+repos:
+  # ---------------------------------------------------------------------------
+  # File hygiene — basic sanity checks on all text files
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        # Remove trailing whitespace; some editors leave it behind.
+      - id: end-of-file-fixer
+        # Ensure every file ends with a single newline (POSIX standard).
+      - id: check-yaml
+        # Validate YAML syntax before it reaches CI.
+      - id: check-json
+        # Validate JSON syntax.
+      - id: check-merge-conflict
+        # Block commits containing unresolved merge markers (<<<<<<<).
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+        # Reject accidental commits of large binaries (>500 KB).
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+        # Normalise line endings to LF. Prevents CRLF vs LF noise.
+
+    # ---------------------------------------------------------------------------
+  # Secret detection — the most important hook
+  # ---------------------------------------------------------------------------
+  # Note: gitleaks is not used here because Windows 11 Smart App Control blocks
+  # the pre-compiled Go binary that gitleaks ships as (WinError 4551).
+  # We use detect-secrets (pure Python) for local pre-commit checks, and gitleaks
+  # runs in the CI pipeline (Step 5) on GitHub-hosted Linux runners.
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        # Detect hardcoded secrets. Uses a baseline file to record known
+        # false positives so future runs don't re-flag them.
+
+  # ---------------------------------------------------------------------------
+  # Python linting and formatting — ruff (replaces flake8, isort, black)
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.1
+    hooks:
+      - id: ruff
+        args: ['--fix']
+        # Lint Python files; auto-fix what can be auto-fixed.
+      - id: ruff-format
+        # Format Python files (equivalent to black).
+
+  # ---------------------------------------------------------------------------
+  # Python type checking — mypy
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        additional_dependencies: ['types-requests']
+        # Static type checking. Only runs on staged Python files.
+        # additional_dependencies is where you list any type-stub packages
+        # your project needs (e.g. types-requests for the `requests` library).
+
+# =============================================================================
+# Exclusions
+# =============================================================================
+# The following files are never checked by hooks. Add patterns here for
+# generated files, vendored code, or files where checks are counterproductive.
+exclude: |
+  (?x)^(
+      \.git/|
+      \.venv/|
+      venv/|
+      build/|
+      dist/|
+      node_modules/|
+      .*\.min\.js|
+      .*\.min\.css
+  )$
