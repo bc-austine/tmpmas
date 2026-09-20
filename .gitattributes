@@ -1,0 +1,33 @@
+# =============================================================================
+# TMPMAS .gitattributes
+# =============================================================================
+# Enforces consistent line endings across platforms, independent of any
+# developer's local core.autocrlf setting.
+#
+# Rationale: pre-commit's mixed-line-ending hook writes LF; Windows Git with
+# autocrlf=true rewrites CRLF on checkout; the two fight forever without this
+# file. .gitattributes resolves it at the Git layer, so every developer sees
+# identical line endings regardless of OS.
+# =============================================================================
+
+# Default: normalise to LF in the repository, preserve LF in the working tree
+* text=auto eol=lf
+
+# Binary files — no line-ending processing at all
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.tar binary
+*.gz binary
+*.whl binary
+
+# Shell scripts must be LF (they break with CRLF)
+*.sh text eol=lf
+
+# Windows-only scripts (if we ever add them) — CRLF is appropriate
+*.bat text eol=crlf
+*.cmd text eol=crlf
