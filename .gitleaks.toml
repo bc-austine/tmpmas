@@ -1,0 +1,50 @@
+# =============================================================================
+# TMPMAS — gitleaks configuration
+# =============================================================================
+# Paths excluded from scanning. Reduces scan time and eliminates false
+# positives on files that legitimately contain placeholder or local values.
+#
+# The regexes are anchored with ''' ... ''' (TOML literal strings). They match
+# against the path relative to the scan root, using forward slashes.
+# =============================================================================
+
+title = "TMPMAS gitleaks configuration"
+
+[extend]
+# Extend the default ruleset; add project-specific rules below if needed.
+useDefault = true
+
+[allowlist]
+description = "TMPMAS path allowlist"
+paths = [
+    # Version control internals
+    '''\.git/''',
+
+    # Python virtual environments and caches
+    '''\.venv/''',
+    '''venv/''',
+    '''__pycache__/''',
+    '''\.mypy_cache/''',
+    '''\.pytest_cache/''',
+    '''\.ruff_cache/''',
+    '''\.coverage''',
+    '''htmlcov/''',
+
+    # Node (present in some tooling)
+    '''node_modules/''',
+
+    # Build artefacts
+    '''build/''',
+    '''dist/''',
+
+    # Developer-local environment files (gitignored; contain local-only values)
+    '''\.env$''',
+    '''\.env\.local$''',
+    '''\.env\..*\.local$''',
+
+    # Test fixtures with intentionally fake secrets
+    '''tests/fixtures/''',
+
+    # This config itself (contains regex patterns that look suspicious)
+    '''\.gitleaks\.toml$''',
+]
