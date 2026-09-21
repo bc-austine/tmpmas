@@ -40,10 +40,14 @@ easy to navigate between code and its tests.
   document the reproduction in an issue
 - **Manual test scripts** — manual testing procedures belong in `docs/testing/`
 
-## Conventions
+### Conventions
 
 - Framework: **pytest**
 - Coverage target: **80% line, 70% branch** on new code
+  - **Current status:** measurement is enabled, but the fail-under threshold
+    is temporarily disabled in CI (`.github/workflows/ci.yml`, `test` job).
+    It will be re-enabled once `src/` contains non-trivial code from
+    Phase 5 Sprint 1.
 - Tests are **deterministic** — no flaky tests. A flaky test is fixed or deleted
 - Tests are **independent** — no ordering dependencies between tests
 - Test data is **synthetic** — never real fixtures from production sources
