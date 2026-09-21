@@ -67,17 +67,14 @@ repos:
       - id: ruff-format
         # Format Python files (equivalent to black).
 
-  # ---------------------------------------------------------------------------
+   # ---------------------------------------------------------------------------
   # Python type checking — mypy
   # ---------------------------------------------------------------------------
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.13.0
-    hooks:
-      - id: mypy
-        additional_dependencies: ['types-requests']
-        # Static type checking. Only runs on staged Python files.
-        # additional_dependencies is where you list any type-stub packages
-        # your project needs (e.g. types-requests for the `requests` library).
+  # Note: mypy is not used in pre-commit because its compiled C extensions are
+  # blocked by Windows 11 Smart App Control ([WinError 4551]). Type checking
+  # runs in the CI pipeline on GitHub-hosted Linux runners (see
+  # .github/workflows/ci.yml → type-check job).
+
 
 # =============================================================================
 # Exclusions
