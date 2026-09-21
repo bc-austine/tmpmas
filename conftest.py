@@ -39,7 +39,7 @@ def pytest_configure(config: object) -> None:
     """
     # ``config`` is typed as ``object`` to avoid importing pytest for
     # type-checking purposes only. Runtime behaviour is unaffected.
-    addinivalue_line = getattr(config, "addinivalue_line")
+    addinivalue_line = config.addinivalue_line
     for name, description in MARKERS:
         addinivalue_line("markers", f"{name}: {description}")
 
