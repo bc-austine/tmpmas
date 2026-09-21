@@ -1,0 +1,4 @@
+{
+  "strict": true,
+  "contexts": ["CI/lint", "CI/format-check", "CI/type-check", "CI/security", "CI/test"]
+}
