@@ -107,7 +107,7 @@ jobs:
           fi
           pytest tests/integration -v
 
-  # ===========================================================================
+    # ===========================================================================
   # Stage 8 — Static analysis (Bandit + Semgrep)
   # ===========================================================================
   static-analysis:
@@ -119,17 +119,31 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Run Bandit
-        run: bandit -r src -ll -ii || (echo "::error::Bandit found high-severity issues" && exit 1)
-      - name: Run Semgrep
-        run: semgrep --config=auto --error src
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
       - name: Install tools
         # Semgrep's dependency chain (opentelemetry-instrumentation) still
         # imports `pkg_resources`, which was removed from setuptools 81+.
         # Pin setuptools <81 until semgrep updates its dependency tree.
         run: |
-          pip install "setuptools<81"
-          pip install bandit==1.7.10 semgrep==1.94.0
+          python -m pip install "setuptools<81"
+          python -m pip install "bandit==1.7.10"
+          python -m pip install "semgrep==1.94.0"
+
+      - name: Verify tools are importable
+        run: |
+          python -m pip show bandit | head -2
+          python -m pip show semgrep | head -2
+          python -c "import bandit; print('bandit', bandit.__version__)"
+          python -c "import semgrep; print('semgrep imported')"
+
+      - name: Run Bandit
+        run: python -m bandit -r src -ll -ii
+
+      - name: Run Semgrep
+        run: python -m semgrep --config=auto --error src
 
   # ===========================================================================
   # Stage 9 — Dependency scan (pip-audit)
