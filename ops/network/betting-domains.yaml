@@ -76,10 +76,11 @@ write_prohibited_patterns:
 enforcement:
   ci_gate:
     enabled: true
-    # Applied at pipeline stage 15 (outbound-API pattern scan)
-    status: warn-only  # to be switched to blocking in Phase 2
+    status: blocking  # promoted in Phase 2 (stage 15)
 
   network_policy:
-    enabled: false  # to be implemented in Phase 3
-    # Applied as a docker-compose egress blocklist
-    scope: [app, worker]  # only application containers, not observability
+    enabled: true    # implemented in Phase 3
+    mechanism: dns-blocklist
+    scope: [app]     # only the application container; observability stays open
+    dns_service: tmpmas-blocklist-dns
+    ipv4_address: 172.25.0.53

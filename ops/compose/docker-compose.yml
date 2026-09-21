@@ -45,8 +45,11 @@ services:
         condition: service_healthy
     # Keep the container alive when no command is running so `make shell` works.
     command: sleep infinity
+    dns:
+       - 172.25.0.53
     networks:
       - tmpmas-net
+
 
   db:
     container_name: tmpmas-db
@@ -70,11 +73,37 @@ services:
     networks:
       - tmpmas-net
 
+  # ---------------------------------------------------------------------------
+  # DNS blocklist server (ADR-019)
+  # ---------------------------------------------------------------------------
+  # The app container uses this as its only DNS resolver. Domains in
+  # ops/network/betting-domains.yaml resolve to 0.0.0.0 (null route).
+  # Other containers use Docker's default DNS; only the app is restricted.
+  blocklist-dns:
+    container_name: tmpmas-blocklist-dns
+    build:
+      context: ../dns
+      dockerfile: Dockerfile
+    image: tmpmas/dns:dev
+    restart: unless-stopped
+    volumes:
+      - ../network/betting-domains.yaml:/etc/tmpmas/betting-domains.yaml:ro
+    networks:
+      tmpmas-net:
+        ipv4_address: 172.25.0.53
+
 volumes:
   postgres-data:
     name: tmpmas-postgres-data
+  prometheus-data:
+    name: tmpmas-prometheus-data
+  grafana-data:
+    name: tmpmas-grafana-data
 
 networks:
   tmpmas-net:
     name: tmpmas-net
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/24

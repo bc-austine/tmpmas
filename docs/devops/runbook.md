@@ -146,6 +146,17 @@ required status check on `main`.
 
 ## 5. Observability
 
+## 5a. DNS Blocklist (ADR-019)
+
+The `blocklist-dns` container enforces the network-level portion of ADR-019.
+It resolves prohibited betting domains to `0.0.0.0` for the `app` container.
+
+### Verifying the block is active
+
+```bash
+docker compose -f ops/compose/docker-compose.yml exec app \
+    python -c "import socket; print(socket.gethostbyname('bet365.com'))"
+
 | Service | URL | Credentials |
 |---------|-----|-------------|
 | Prometheus | http://localhost:9090 | None |
