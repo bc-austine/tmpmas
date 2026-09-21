@@ -1,0 +1,85 @@
+# =============================================================================
+# TMPMAS — Betting-Domain Pattern Set (ADR-019)
+# =============================================================================
+# Per ADR-019, the platform has no outbound transactional capability. This
+# file enumerates the patterns the CI gate (outbound-API pattern scan,
+# stage 15) and the container network policy (Phase 1 implementation)
+# enforce against.
+#
+# Governance:
+#   - This file is a governed artefact under CFG-007.
+#   - Changes require approval via the standard change process.
+#   - Approved sources (ingestion targets) are listed under `approved_sources`
+#     and are permitted for READ ONLY. None are permitted for write.
+# =============================================================================
+
+version: 1
+
+# --- Approved sources (READ ONLY) -------------------------------------------
+# Sources the platform is authorised to *acquire data from* via read-only
+# ingestion. These are NOT permitted for POST/PUT/PATCH/DELETE.
+approved_sources:
+  - name: placeholder_fixture_source
+    domains:
+      - fixtures.example.invalid
+    purpose: fixture ingestion (placeholder pending source approval)
+    approved_by: TBD
+    approved_date: TBD
+
+  - name: placeholder_tennis_data_source
+    domains:
+      - tennis-data.example.invalid
+    purpose: historical tennis data ingestion (placeholder)
+    approved_by: TBD
+    approved_date: TBD
+
+  - name: placeholder_odds_source
+    domains:
+      - odds.example.invalid
+    purpose: odds ingestion (placeholder)
+    approved_by: TBD
+    approved_date: TBD
+
+# --- Betting domain patterns (WRITE PROHIBITED) -----------------------------
+# Patterns matching known betting platforms, exchanges, or odds APIs that
+# must never receive an outbound write from this platform.
+# CI gate 15 rejects any code change that introduces a call matching these
+# patterns; the container network policy enforces it at runtime.
+write_prohibited_patterns:
+  # Major bookmaker platform domains
+  - pattern: '(^|\.)bet365\.com$'
+  - pattern: '(^|\.)betfair\.com$'
+  - pattern: '(^|\.)pinnacle\.com$'
+  - pattern: '(^|\.)williamhill\.com$'
+  - pattern: '(^|\.)betway\.com$'
+  - pattern: '(^|\.)unibet\.com$'
+  - pattern: '(^|\.)bwin\.com$'
+  - pattern: '(^|\.)ladbrokes\.com$'
+  - pattern: '(^|\.)coral\.co\.uk$'
+  - pattern: '(^|\.)paddypower\.com$'
+  - pattern: '(^|\.)skybet\.com$'
+  - pattern: '(^|\.)1xbet\.com$'
+  - pattern: '(^|\.)betwinner\.com$'
+
+  # Common odds-data providers used for live betting
+  - pattern: '(^|\.)the-odds-api\.com$'
+  - pattern: '(^|\.)oddsapi\.io$'
+  - pattern: '(^|\.)betgenius\.com$'
+  - pattern: '(^|\.)sportradar\.com$'
+
+  # Betting-adjacent payment processors (defence in depth)
+  - pattern: '(^|\.)skrill\.com$'
+  - pattern: '(^|\.)neteller\.com$'
+  - pattern: '(^|\.)paysafecard\.com$'
+
+# --- Enforcement ------------------------------------------------------------
+enforcement:
+  ci_gate:
+    enabled: true
+    # Applied at pipeline stage 15 (outbound-API pattern scan)
+    status: warn-only  # to be switched to blocking in Phase 2
+
+  network_policy:
+    enabled: false  # to be implemented in Phase 3
+    # Applied as a docker-compose egress blocklist
+    scope: [app, worker]  # only application containers, not observability

@@ -86,6 +86,31 @@ jobs:
         run: mypy src
 
   # ---------------------------------------------------------------------------
+  # CodeQL — static security analysis
+  # ---------------------------------------------------------------------------
+  codeql:
+    name: codeql
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          queries: security-extended
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"
+
+  # ---------------------------------------------------------------------------
   # Security — gitleaks + pip-audit
   # ---------------------------------------------------------------------------
   security:
@@ -148,3 +173,57 @@ jobs:
           name: coverage-report
           path: coverage.xml
           retention-days: 90
+
+  # ---------------------------------------------------------------------------
+  # Traceability — Conventional Commits + story reference
+  # ---------------------------------------------------------------------------
+  # Warn-only until the RTM lands (see ADR-024). When the RTM is complete,
+  # remove `continue-on-error: true` to make this gate blocking.
+  traceability:
+    name: traceability
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate Conventional Commits format
+        run: |
+          set +e
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+          if [ -z "$BASE" ] || [ -z "$HEAD" ]; then
+            echo "Not a PR context; skipping commit-format check."
+            exit 0
+          fi
+          COMMITS=$(git log --format='%s' "$BASE..$HEAD")
+          BAD=0
+          while IFS= read -r msg; do
+            [ -z "$msg" ] && continue
+            if ! echo "$msg" | grep -qE '^(feat|fix|docs|style|refactor|test|chore|perf)(\([^)]+\))?: .+'; then
+              echo "::warning::Commit does not follow Conventional Commits: $msg"
+              BAD=$((BAD+1))
+            fi
+          done <<< "$COMMITS"
+          if [ "$BAD" -gt 0 ]; then
+            echo "::warning::$BAD commit(s) do not follow Conventional Commits format."
+          else
+            echo "All commits follow Conventional Commits."
+          fi
+
+      - name: Validate story reference in PR body
+        run: |
+          set +e
+          BODY="${{ github.event.pull_request.body }}"
+          if [ -z "$BODY" ]; then
+            echo "::warning::PR body is empty; cannot verify story reference."
+            exit 0
+          fi
+          if echo "$BODY" | grep -qE '(Refs|Closes|Fixes): #[0-9]+|US-[0-9]+|F-[0-9]+'; then
+            echo "PR body references a tracked item."
+          else
+            echo "::warning::PR body does not reference a story, feature, or issue."
+          fi
