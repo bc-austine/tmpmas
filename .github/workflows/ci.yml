@@ -7,87 +7,163 @@ on:
     branches: [main]
   workflow_dispatch:
   schedule:
-    # Nightly at 02:00 UTC — catches dependency and tool drift over time.
     - cron: '0 2 * * *'
 
-# Principle of least privilege: workflows only need read access unless they
-# explicitly require more. Individual jobs can override this if needed.
 permissions:
   contents: read
 
-# Cancel in-progress runs for the same ref. Prevents queue pile-up when a
-# developer pushes rapidly to a branch.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # Lint — ruff
-  # ---------------------------------------------------------------------------
+  # ===========================================================================
+  # Stage 3 — Lint
+  # ===========================================================================
   lint:
     name: lint
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - run: pip install ruff==0.7.1
+      - run: ruff check src tests
 
-      - name: Install ruff
-        run: pip install ruff==0.7.1
-
-      - name: Run ruff lint
-        run: ruff check src tests
-
-  # ---------------------------------------------------------------------------
-  # Format check — ruff format
-  # ---------------------------------------------------------------------------
+  # ===========================================================================
+  # Stage 4 — Format check
+  # ===========================================================================
   format-check:
     name: format-check
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - run: pip install ruff==0.7.1
+      - run: ruff format --check src tests
 
-      - name: Install ruff
-        run: pip install ruff==0.7.1
-
-      - name: Check formatting
-        run: ruff format --check src tests
-
-  # ---------------------------------------------------------------------------
-  # Type check — mypy
-  # ---------------------------------------------------------------------------
+  # ===========================================================================
+  # Stage 5 — Type check
+  # ===========================================================================
   type-check:
     name: type-check
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install mypy==1.13.0 pyyaml==6.0.2 types-PyYAML==6.0.12.20240917
+      - run: mypy src scripts
 
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+  # ===========================================================================
+  # Stage 6 — Unit tests
+  # ===========================================================================
+  unit-tests:
+    name: unit-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - run: pip install pytest==8.3.3 pytest-cov==6.0.0
+      - name: Run unit tests
+        run: pytest tests/ --ignore=tests/integration -v --cov=src --cov-report=term --cov-report=xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-coverage
+          path: coverage.xml
+          retention-days: 90
+
+  # ===========================================================================
+  # Stage 7 — Integration tests
+  # ===========================================================================
+  integration-tests:
+    name: integration-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - run: pip install pytest==8.3.3
+      - name: Run integration tests
+        run: |
+          if [ -z "$(find tests/integration -name 'test_*.py' 2>/dev/null)" ]; then
+            echo "No integration tests yet — passing as placeholder."
+            exit 0
+          fi
+          pytest tests/integration -v
+
+    # ===========================================================================
+  # Stage 8 — Static analysis (Bandit + Semgrep)
+  # ===========================================================================
+  static-analysis:
+    name: static-analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Install mypy
-        run: pip install mypy==1.13.0
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
 
-      - name: Run mypy
-        run: mypy src
+      - name: Install tools
+        # Semgrep's dependency chain (opentelemetry-instrumentation) still
+        # imports `pkg_resources`, which was removed from setuptools 81+.
+        # Pin setuptools <81 until semgrep updates its dependency tree.
+        run: |
+          python -m pip install "setuptools<81"
+          python -m pip install "bandit==1.7.10"
+          python -m pip install "semgrep==1.94.0"
 
-  # ---------------------------------------------------------------------------
-  # CodeQL — static security analysis
-  # ---------------------------------------------------------------------------
+      - name: Verify tools are importable
+        run: |
+          python -m pip show bandit | head -2
+          python -m pip show semgrep | head -2
+          python -c "import bandit; print('bandit', bandit.__version__)"
+          python -c "import semgrep; print('semgrep imported')"
+
+      - name: Run Bandit
+        run: python -m bandit -r src -ll -ii
+
+      - name: Run Semgrep
+        run: semgrep --config=auto --error src
+
+  # ===========================================================================
+  # Stage 9 — Dependency scan (pip-audit)
+  # ===========================================================================
+  dependency-scan:
+    name: dependency-scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pip-audit==2.7.3
+      - name: Audit runtime dependencies
+        run: pip-audit --strict --desc . || echo "::warning::pip-audit found issues — review before merge"
+
+  # ===========================================================================
+  # Stage 10 — CodeQL
+  # ===========================================================================
   codeql:
     name: codeql
     runs-on: ubuntu-latest
@@ -98,87 +174,134 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@v4
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+      - uses: github/codeql-action/init@v3
         with:
           languages: python
           queries: security-extended
-
-      - name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/analyze@v3
         with:
           category: "/language:python"
 
-  # ---------------------------------------------------------------------------
-  # Security — gitleaks + pip-audit
-  # ---------------------------------------------------------------------------
-  security:
-    name: security
+  # ===========================================================================
+  # Stage 11 — Secret scanning (gitleaks + trufflehog)
+  # ===========================================================================
+  secret-scan:
+    name: secret-scan
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
-          # gitleaks needs full history to scan every commit, not just the tip.
           fetch-depth: 0
-
       - name: Run gitleaks
         uses: gitleaks/gitleaks-action@v2
         env:
-          # Free for public repos; the action detects and reports findings.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+      - name: Run trufflehog
+        uses: trufflesecurity/trufflehog@main
         with:
-          python-version: '3.12'
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
 
-      - name: Install pip-audit
-        run: pip install pip-audit==2.7.3
-
-      - name: Audit dependencies
-        run: pip-audit --strict --desc || echo "::warning::pip-audit found issues — review before merge"
-
-  # ---------------------------------------------------------------------------
-  # Tests — pytest with coverage
-  # ---------------------------------------------------------------------------
-  test:
-    name: test
+  # ===========================================================================
+  # Stage 12 — Build
+  # ===========================================================================
+  build:
+    name: build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          cache: 'pip'
-
-      - name: Install test dependencies
+      - run: pip install build==1.2.2
+      - name: Build wheel and sdist
+        run: python -m build
+      - name: Confirm build artefacts
         run: |
-          pip install pytest==8.3.3 pytest-cov==6.0.0
+          ls -la dist/
+          test -n "$(ls dist/*.whl 2>/dev/null)" || (echo "::error::No wheel produced" && exit 1)
+          test -n "$(ls dist/*.tar.gz 2>/dev/null)" || (echo "::error::No sdist produced" && exit 1)
 
-      - name: Run tests with coverage
-        # Coverage measurement enabled; threshold temporarily disabled until
-        # Phase 5 Sprint 1 adds real application code. Re-enable with
-        # --cov-fail-under=80 once src/ contains testable modules.
-        run: pytest --cov=src --cov-report=term --cov-report=xml
+  # ===========================================================================
+  # Stage 13 — Contract tests
+  # ===========================================================================
+  contract-tests:
+    name: contract-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run contract tests
+        run: |
+          if [ ! -d tests/contract ]; then
+            echo "No contract tests yet — passing as placeholder."
+            exit 0
+          fi
+          pip install pytest==8.3.3
+          pytest tests/contract -v
 
-      - name: Upload coverage report
-        if: always()
+  # ===========================================================================
+  # Stage 14 — Package (upload build artefacts)
+  # ===========================================================================
+  package:
+    name: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install build==1.2.2
+      - run: python -m build
+      - name: Upload package artefacts
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report
-          path: coverage.xml
+          name: tmpmas-package
+          path: dist/
           retention-days: 90
 
-  # ---------------------------------------------------------------------------
-  # Traceability — Conventional Commits + story reference
-  # ---------------------------------------------------------------------------
-  # Warn-only until the RTM lands (see ADR-024). When the RTM is complete,
-  # remove `continue-on-error: true` to make this gate blocking.
+  # ===========================================================================
+  # Stage 15 — Outbound-API pattern scan (ADR-019)
+  # ===========================================================================
+  outbound-api-pattern:
+    name: outbound-api-pattern
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pyyaml==6.0.2
+      - name: Run outbound-API pattern scan
+        run: python scripts/check_outbound_api.py --config ops/network/betting-domains.yaml --src src
+
+  # ===========================================================================
+  # Stage 16 — Constitutional invariant check (ADR-020)
+  # ===========================================================================
+  constitutional-invariant:
+    name: constitutional-invariant
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run constitutional invariant check
+        run: python scripts/check_constitutional_invariant.py --src src
+
+  # ===========================================================================
+  # Stage 17 — Traceability check (ADR-024)
+  # ===========================================================================
+  # Warn-only until the RTM lands. Remove `continue-on-error: true` to make
+  # this gate blocking once QA Lead provides the RTM.
   traceability:
     name: traceability
     runs-on: ubuntu-latest
@@ -189,7 +312,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Validate Conventional Commits format
         run: |
           set +e
@@ -213,7 +335,6 @@ jobs:
           else
             echo "All commits follow Conventional Commits."
           fi
-
       - name: Validate story reference in PR body
         run: |
           set +e
