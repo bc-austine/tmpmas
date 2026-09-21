@@ -64,6 +64,13 @@ make up
 # Confirm both containers are running
 make ps
 
+### First-time setup (additional)
+
+After cloning, run:
+
+```bash
+make init
+
 ### Verify your setup
 
 ```bash
