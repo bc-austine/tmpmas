@@ -19,28 +19,33 @@ fi
 echo "→ Checking CI status for PR #${PR}..."
 CHECKS_JSON=$(gh pr checks "$PR" --repo "$REPO" --json state,name 2>&1 || true)
 
-if echo "$CHECKS_JSON" | grep -q '"state":"PENDING"'; then
-    echo "✗ Refusing to merge: CI checks still pending."
-    echo "  Run 'gh pr checks $PR' to see current status."
-    exit 1
-fi
+# Refuse if any check is NOT in a passing state.
+# Acceptable states: SUCCESS, SKIPPED, NEUTRAL.
+# Everything else (PENDING, FAILURE, CANCELLED, TIMED_OUT, ACTION_REQUIRED)
+# means the PR is not safe to merge.
+UNACCEPTABLE=$(echo "$CHECKS_JSON" | \
+    grep -oE '"state":"[A-Z_]+"' | \
+    grep -vE '"state":"(SUCCESS|SKIPPED|NEUTRAL)"' || true)
 
-if echo "$CHECKS_JSON" | grep -q '"state":"FAILURE"'; then
-    echo "✗ Refusing to merge: CI checks failing."
+if [ -n "$UNACCEPTABLE" ]; then
+    echo "✗ Refusing to merge: CI checks not all green."
+    echo "  Non-passing states:"
+    echo "$UNACCEPTABLE" | sort -u | sed 's/^/    /'
     echo "  Run 'gh pr checks $PR' to see details."
     exit 1
 fi
 
-echo "✓ All CI checks green. Proceeding with admin merge sequence..."
+# Guard against the empty-checks case (no checks have been registered yet).
+if [ -z "$CHECKS_JSON" ] || [ "$CHECKS_JSON" = "[]" ]; then
+    echo "✗ Refusing to merge: no CI checks found for PR #${PR}."
+    echo "  Confirm the PR has triggered CI before merging."
+    exit 1
+fi
 
-gh api --method DELETE \
-    -H "Accept: application/vnd.github+json" \
-    "repos/${REPO}/branches/main/protection/enforce_admins"
+echo "✓ All CI checks green. Proceeding with standard merge (no --admin)."
+echo "  Note: PR must already have an approving review from a non-author."
+echo ""
 
-gh pr merge "$PR" --squash --admin --delete-branch --repo "$REPO"
+gh pr merge "$PR" --squash --delete-branch --repo "$REPO"
 
-gh api --method POST \
-    -H "Accept: application/vnd.github+json" \
-    "repos/${REPO}/branches/main/protection/enforce_admins"
-
-echo "✓ Merge complete. Branch protection restored."
+echo "✓ Merge complete."
