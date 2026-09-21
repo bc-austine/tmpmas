@@ -90,10 +90,11 @@ dmypy.json
 # -----------------------------------------------------------------------------
 # IDE and editor
 # -----------------------------------------------------------------------------
+# `.vscode/extensions.json` is committed (shared recommended extensions).
+# `.vscode/settings.json` and `.vscode/launch.json` are personal — each
+# developer customises them; only extensions.json is expected in the repo.
 .vscode/*
 !.vscode/extensions.json
-!.vscode/settings.json
-!.vscode/launch.json
 .idea/
 *.swp
 *.swo
