@@ -51,8 +51,18 @@ folder**, and **without spaces in the path**. Recommended: `C:\dev\tmpmas`.
 
 ### Environment setup
 
-*(Docker Compose environment is under construction. This section will be updated once available.
-For now, the application stack can be run manually.)*
+The development environment is defined with Docker Compose and lives in
+`ops/compose/docker-compose.yml`. From the repo root:
+
+```bash
+# One-time: copy the environment template
+cp .env.example .env
+
+# Start the environment (app container + PostgreSQL)
+make up
+
+# Confirm both containers are running
+make ps
 
 ### Verify your setup
 

@@ -1,0 +1,80 @@
+# =============================================================================
+# TMPMAS — Docker Compose Development Environment
+# =============================================================================
+# Minimal Phase 5 Sprint 0 environment: application container + PostgreSQL.
+#
+# From repo root:
+#     docker compose -f ops/compose/docker-compose.yml up -d
+#
+# Or, more conveniently:
+#     make up
+#
+# The Makefile wraps these commands.
+# =============================================================================
+
+name: tmpmas
+
+services:
+  app:
+    container_name: tmpmas-app
+    build:
+      context: ../..
+      dockerfile: ops/docker/app.Dockerfile
+    image: tmpmas/app:dev
+    working_dir: /app
+    volumes:
+      # Bind-mount the repo so host edits appear instantly in the container.
+      - ../..:/app
+      # Anonymous volumes for directories that should NOT be shared with the
+      # host — the container generates its own caches that would be noise on
+      # the host.
+      - /app/.venv
+      - /app/.pytest_cache
+      - /app/.mypy_cache
+      - /app/.ruff_cache
+    environment:
+      TMPMAS_ENV: ${TMPMAS_ENV:-development}
+      TMPMAS_LOG_LEVEL: ${TMPMAS_LOG_LEVEL:-DEBUG}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-tmpmas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tmpmas_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-tmpmas}
+    depends_on:
+      db:
+        condition: service_healthy
+    # Keep the container alive when no command is running so `make shell` works.
+    command: sleep infinity
+    networks:
+      - tmpmas-net
+
+  db:
+    container_name: tmpmas-db
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tmpmas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tmpmas_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-tmpmas}
+    ports:
+      # Expose only on localhost so other machines on the network can't reach it.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tmpmas} -d ${POSTGRES_DB:-tmpmas}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - tmpmas-net
+
+volumes:
+  postgres-data:
+    name: tmpmas-postgres-data
+
+networks:
+  tmpmas-net:
+    name: tmpmas-net
+    driver: bridge
