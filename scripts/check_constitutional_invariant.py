@@ -22,6 +22,26 @@ Usage:
     python scripts/check_constitutional_invariant.py [--src src]
 """
 
+# -----------------------------------------------------------------------------
+# DEFERRAL NOTICE (recorded per SM directive 2026-09-21)
+# -----------------------------------------------------------------------------
+# The import-graph check in this module is live and blocking in CI stage 16.
+#
+# The storage-layer enforcement (database write-grant validation for
+# snapshot, audit-log, and decision-status tables) is DEFERRED to
+# Phase 5 Sprint 2. Rationale:
+#
+#   - Per ADR-020 and TMPMAS-P4-001 §6.6, write authority for those tables
+#     is enforced at the schema grant level.
+#   - Schema migrations do not yet exist; they arrive with E2 (Data and
+#     temporal foundation) in Phase 5 Sprint 2.
+#   - The check_schema() function below is scaffolded to parse migration
+#     files when they exist.
+#
+# Sprint 2 acceptance condition: verify the storage-layer enforcement is
+# active before Sprint 2 Review.
+# -----------------------------------------------------------------------------
+
 from __future__ import annotations
 
 import argparse
@@ -115,9 +135,11 @@ def _is_other_plane(module: str, other_plane: str) -> bool:
 def check_schema(schema_root: Path) -> list[Violation]:
     """Placeholder for schema-level write-grant checks.
 
-    When migrations land (Phase 5 Sprint 2+), this will parse the migration
-    files and confirm that snapshot, audit, and decision-status tables have
-    no write grants outside the Decision Capture service.
+    DEFERRED: See the module-level deferral notice. This function will
+    parse migration files under `schema_root` and confirm that snapshot,
+    audit, and decision-status tables have no write grants outside the
+    Decision Capture service. Activates when E2 schema migrations land
+    (Phase 5 Sprint 2).
     """
     violations: list[Violation] = []
     if not schema_root.exists():
