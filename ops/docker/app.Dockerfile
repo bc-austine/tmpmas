@@ -31,7 +31,7 @@ WORKDIR /app
 # Install development tooling first (before copying source) so that
 # dependency changes don't invalidate the source layers of the cache.
 RUN pip install \
-        pytest==8.3.3 \
+        pytest==9.0.3 \
         pytest-cov==6.0.0 \
         mypy==1.13.0 \
         pre-commit==4.0.1 \

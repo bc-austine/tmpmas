@@ -1,0 +1,56 @@
+# =============================================================================
+# TMPMAS — Dependabot configuration
+# =============================================================================
+# Automatically opens PRs for dependency updates. Alerts are already enabled
+# at the repository level (Step 2), but this file ensures updates are
+# *proposed* on a schedule, not just flagged.
+#
+# Security updates still open immediately when a CVE lands. The schedule
+# below controls version updates (routine drift).
+# =============================================================================
+
+version: 2
+updates:
+  # Python dependencies (pyproject.toml)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Africa/Lagos"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "chore"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    reviewers:
+      - "bc-austine"
+
+  # GitHub Actions workflow dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "chore(ci-deps)"
+
+  # Docker base images in ops/docker/
+  - package-ecosystem: "docker"
+    directory: "/ops/docker"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "infra"
+    commit-message:
+      prefix: "chore(docker-deps)"

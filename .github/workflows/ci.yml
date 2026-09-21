@@ -75,7 +75,7 @@ jobs:
         with:
           python-version: '3.12'
           cache: 'pip'
-      - run: pip install pytest==8.3.3 pytest-cov==6.0.0 pyyaml==6.0.2
+      - run: pip install pytest==9.0.3 pytest-cov==6.0.0 pyyaml==6.0.2
       - name: Run unit tests
         run: pytest tests/ --ignore=tests/integration -v --cov=src --cov-report=term --cov-report=xml
       - uses: actions/upload-artifact@v4
@@ -98,7 +98,7 @@ jobs:
         with:
           python-version: '3.12'
           cache: 'pip'
-      - run: pip install pytest==8.3.3
+      - run: pip install pytest==9.0.3
       - name: Run integration tests
         run: |
           if [ -z "$(find tests/integration -name 'test_*.py' 2>/dev/null)" ]; then
@@ -241,7 +241,7 @@ jobs:
             echo "No contract tests yet — passing as placeholder."
             exit 0
           fi
-          pip install pytest==8.3.3
+          pip install pytest==9.0.3
           pytest tests/contract -v
 
   # ===========================================================================
