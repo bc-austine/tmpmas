@@ -143,7 +143,7 @@ jobs:
         run: python -m bandit -r src -ll -ii
 
       - name: Run Semgrep
-        run: python -m semgrep --config=auto --error src
+        run: semgrep --config=auto --error src
 
   # ===========================================================================
   # Stage 9 — Dependency scan (pip-audit)
