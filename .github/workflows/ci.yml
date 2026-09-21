@@ -78,7 +78,7 @@ jobs:
       - run: pip install pytest==9.0.3 pytest-cov==6.0.0 pyyaml==6.0.2
       - name: Run unit tests
         run: pytest tests/ --ignore=tests/integration -v --cov=src --cov-report=term --cov-report=xml
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: unit-coverage
@@ -260,7 +260,7 @@ jobs:
       - run: pip install build==1.2.2
       - run: python -m build
       - name: Upload package artefacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tmpmas-package
           path: dist/
