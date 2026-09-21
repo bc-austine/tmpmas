@@ -15,13 +15,18 @@ COMPOSE_FILE := ops/compose/docker-compose.yml
 COMPOSE      := docker compose -f $(COMPOSE_FILE)
 
 .DEFAULT_GOAL := help
-.PHONY: help up down restart shell logs test lint format clean ps rebuild check
+.PHONY: help init up down restart shell logs test lint format clean ps rebuild check grafana prometheus obs-logs
 
 help: ## Show this help message
 	@echo "TMPMAS developer targets:"
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
+
+init: ## One-time setup: pull the gitleaks image for pre-commit
+	@echo "Pulling gitleaks image for pre-commit hooks..."
+	docker pull ghcr.io/gitleaks/gitleaks:v8.21.2
+	@echo "Done. The gitleaks pre-commit hook is ready."
 
 up: ## Start the environment (app + db) in the background
 	$(COMPOSE) up -d

@@ -40,20 +40,42 @@ repos:
         args: ['--fix=lf']
         # Normalise line endings to LF. Prevents CRLF vs LF noise.
 
-    # ---------------------------------------------------------------------------
-  # Secret detection — the most important hook
+   # ---------------------------------------------------------------------------
+  # Secret detection — gitleaks, run inside a Linux container
   # ---------------------------------------------------------------------------
-  # Note: gitleaks is not used here because Windows 11 Smart App Control blocks
-  # the pre-compiled Go binary that gitleaks ships as (WinError 4551).
-  # We use detect-secrets (pure Python) for local pre-commit checks, and gitleaks
-  # runs in the CI pipeline (Step 5) on GitHub-hosted Linux runners.
-  - repo: https://github.com/Yelp/detect-secrets
-    rev: v1.5.0
+  # Windows 11 Smart App Control blocks the gitleaks binary when run
+  # directly on the host (WinError 4551). Running it inside a Linux container
+  # sidesteps Windows SAC entirely and uses the same tool version as CI.
+  #
+  # Why `detect`, not `protect --staged`: gitleaks' `--staged` mode relies on
+  # git access inside the container to read the index. On Docker Desktop for
+  # Windows, that access doesn't work reliably — gitleaks silently falls back
+  # to scanning commits and misses staged content. `detect --source` scans
+  # files directly and works reliably across platforms.
+  #
+  # Fail-open behaviour: if Docker is not running, the hook prints a warning
+  # and allows the commit. Push protection and CI provide the authoritative
+  # checks in that case.
+  - repo: local
     hooks:
-      - id: detect-secrets
-        args: ['--baseline', '.secrets.baseline']
-        # Detect hardcoded secrets. Uses a baseline file to record known
-        # false positives so future runs don't re-flag them.
+      - id: gitleaks
+        name: Detect secrets (gitleaks, containerised)
+        entry: >
+          bash -c '
+          if ! docker info >/dev/null 2>&1; then
+            echo "WARNING: Docker not running; skipping gitleaks. Push will be checked by CI." >&2;
+            exit 0;
+          fi;
+          HOST_DIR="$(pwd -W 2>/dev/null || pwd)";
+          MSYS_NO_PATHCONV=1 docker run --rm --pull=never
+          -v "${HOST_DIR}:/repo"
+          ghcr.io/gitleaks/gitleaks:v8.21.2
+          detect --source=/repo --no-git
+          --config=/repo/.gitleaks.toml
+          --verbose --no-banner --redact
+          '
+        language: system
+        pass_filenames: false
 
   # ---------------------------------------------------------------------------
   # Python linting and formatting — ruff (replaces flake8, isort, black)
