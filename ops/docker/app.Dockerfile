@@ -5,7 +5,7 @@
 # and pre-commit hooks. Used by ops/compose/docker-compose.yml.
 # =============================================================================
 
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 # Don't write .pyc files; don't buffer stdout/stderr.
 ENV PYTHONDONTWRITEBYTECODE=1 \
